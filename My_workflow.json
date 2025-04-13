@@ -1,0 +1,220 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ea53fb21-dcd9-45bd-b741-a14725c45cfc",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/home/node/data/orders_cleaned.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "40af57b1-4df9-434a-ae79-a072664021ca",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "id": "10205f0e-98f4-4efa-96f3-51c5290daca4",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "indexId": "bikes_index",
+        "dataToSend": "autoMapInputData",
+        "additionalFields": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.elasticsearch",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "id": "47191e64-be0c-4746-8302-87bef84e75bb",
+      "name": "Elasticsearch",
+      "credentials": {
+        "elasticsearchApi": {
+          "id": "VZ14gOwenFprcYuS",
+          "name": "Elasticsearch account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "questions",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        220
+      ],
+      "id": "0126b9d5-2704-4a9f-947a-99106772dac0",
+      "webhookId": "30824943-3d35-4d28-8dde-d912618ff1b6"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://es01:9200/bikes_index/_search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"size\": 0,\n  \"aggs\": {\n    \"agg_by_field\": {\n      \"terms\": {\n        \"field\": \"{{$json[\"body\"][\"field\"]}}\",\n        \"size\": 10\n      }\n    }\n  }\n}\n",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        280,
+        220
+      ],
+      "id": "fabd91e8-a569-40da-97d3-9c14d0e99013",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "aHn7XRdbyoFQgSCa",
+          "name": "Unnamed credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const elasticResponse = items[0].json;\nconst buckets = elasticResponse.aggregations.agg_by_field.buckets;\n\n// Retourner un seul objet avec les buckets, PAS un tableau\nreturn {\n  json: {\n    buckets: buckets.map(bucket => ({\n      key: bucket.key,\n      doc_count: bucket.doc_count\n    }))\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        220
+      ],
+      "id": "1a19d4b9-9c02-4104-911f-d4082bff0adb",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        220
+      ],
+      "id": "8f6bd2f7-6181-4dc9-9d70-8887a4006511",
+      "name": "Respond to Webhook",
+      "notesInFlow": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Elasticsearch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c217c0a2-503c-4350-a87b-10bd5b176412",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "79d3ef002287e634aec27ae9026391e37aa3d1e58c9b1431a12c47469ef06c41"
+  },
+  "id": "3VzGeg6oCrnHgFqO",
+  "tags": []
+}
