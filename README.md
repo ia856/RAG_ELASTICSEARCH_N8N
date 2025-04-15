@@ -8,7 +8,6 @@ La plateforme exploite Elasticsearch, Kibana et n8n pour transformer des donnée
 
 ## Architecture
 
-![Architecture diagram](https://via.placeholder.com/800x400)
 
 L'architecture repose sur les composants suivants :
 - **Elasticsearch** : Stockage et vectorisation des données
